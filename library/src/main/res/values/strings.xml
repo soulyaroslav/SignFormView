@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">library</string>
+    <string name="name_field_title">Name</string>
+    <string name="email_field_title">Email</string>
+    <string name="password_field_title">Password</string>
+    <string name="sign_in_title">Sign in</string>
+    <string name="welcome_title">Welcome</string>
+</resources>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#1E1E1E</color>
+    <color name="field_title_color">#595959</color>
+    <color name="next_background">#333333</color>
+    <color name="icon1">#ffffff</color>
+    <color name="icon2">#a6898989</color>
+    <color name="icon3">#87787777</color>
+</resources>
