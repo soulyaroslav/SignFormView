@@ -2,6 +2,7 @@ package soulyaroslav.signformview
 
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.widget.Toast
 import soulyaroslav.library.SignFormViewGroup
 import soulyaroslav.library.entity.FieldBuilder

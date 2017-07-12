@@ -1,14 +1,11 @@
 package soulyaroslav.library
 
-import android.app.PendingIntent.getActivity
 import android.content.Context
 import android.graphics.*
-import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.support.v4.content.ContextCompat
 import android.text.TextPaint
 import android.util.AttributeSet
-import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateInterpolator
@@ -25,10 +22,9 @@ import soulyaroslav.library.listener.SignFormListener
 import soulyaroslav.library.util.BounceInterpolator
 import soulyaroslav.library.util.Constants
 import soulyaroslav.library.util.FieldType
-import soulyaroslav.library.view.IconView
+import soulyaroslav.library.view.FieldIconView
 import soulyaroslav.library.view.NextIconView
 import java.util.*
-import android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT
 import android.widget.TextView
 
 
@@ -72,11 +68,11 @@ class SignFormViewGroup : ViewGroup {
     // current field type
     private var currentFieldType = FieldType.NAME_FIELD
     // parent padding
-    private var padding = defaultInit()
+    private var viewPadding = defaultInit()
     // text size in the sign fields after change
     private var fieldTextWidth = 1
     private var previousFullTextSize = 0
-    private var previousFullTextLength = 0
+    private var previousFieldTextWidth = 0
     // icon when all data entered
     private lateinit var nextIconView: NextIconView
     // flag for drawing main title
@@ -94,6 +90,8 @@ class SignFormViewGroup : ViewGroup {
         initTextPaint()
         initParentBackgroundPaint()
         initNextBackgroundPaint()
+
+
     }
 
     private fun initParentBackgroundPaint() {
@@ -131,7 +129,7 @@ class SignFormViewGroup : ViewGroup {
     private fun retrieveDefaultSize() {
         viewWidth = resources.getDimensionPixelSize(R.dimen.view_width)
         viewHeight = resources.getDimensionPixelSize(R.dimen.view_height)
-        padding = resources.getDimensionPixelSize(R.dimen.parent_padding)
+        viewPadding  = resources.getDimensionPixelSize(R.dimen.parent_padding)
     }
 
     override fun onFinishInflate() {
@@ -159,21 +157,21 @@ class SignFormViewGroup : ViewGroup {
                 FieldType.NAME_FIELD -> {
                     // inflate name field view
                     val nameViewHolder = initFieldView(R.layout.name_field_layout)
-                    val nameIconView = initIconView(R.color.icon1)
+                    val nameIconView = initIconView(R.color.icon1, R.drawable.person)
                     nameFieldHolder = FieldHolder(nameIconView, nameViewHolder, it.validator)
                     fieldHolders.add(nameFieldHolder)
                 }
                 FieldType.EMAIL_FIELD -> {
                     // inflate email field view
                     val emailViewHolder = initFieldView(R.layout.email_field_layout)
-                    val emailIconView = initIconView(R.color.icon2)
+                    val emailIconView = initIconView(R.color.icon2, R.drawable.mail)
                     emailFieldHolder = FieldHolder(emailIconView, emailViewHolder, it.validator)
                     fieldHolders.add(emailFieldHolder)
                 }
                 FieldType.PASSWORD_FIELD -> {
                     // inflate password field view
                     val passwordViewHolder = initFieldView(R.layout.password_field_layout)
-                    val passwordIconView = initIconView(R.color.icon3)
+                    val passwordIconView = initIconView(R.color.icon3, R.drawable.lock)
                     passwordFieldHolder = FieldHolder(passwordIconView, passwordViewHolder, it.validator)
                     fieldHolders.add(passwordFieldHolder)
                 }
@@ -185,10 +183,12 @@ class SignFormViewGroup : ViewGroup {
 
     private fun prepareNextIconView() {
         nextIconView = NextIconView(context)
-        nextIconView.setPadding(padding)
-        nextIconView.visibility = View.GONE
-        nextIconView.onClickEvent {
-            onNextIconClickEvent()
+        nextIconView.apply {
+            setPadding(viewPadding)
+            visibility = View.GONE
+            onClickEvent {
+                onNextIconClickEvent()
+            }
         }
         addView(nextIconView)
     }
@@ -196,15 +196,20 @@ class SignFormViewGroup : ViewGroup {
     private fun initFieldView(layoutId: Int) : ViewHolder {
         val view = inflate(layoutId)
         val viewHolder = ViewHolder(view)
-        viewHolder.root.visibility = View.GONE
+        viewHolder.apply {
+            root.visibility = View.GONE
+        }
         addView(view)
         return viewHolder
     }
 
-    private fun initIconView(strokeColor: Int) : IconView {
-        val view = IconView(context)
-        view.setPadding(padding)
-        view.setStrokeColor(strokeColor)
+    private fun initIconView(strokeColor: Int, icon: Int) : FieldIconView {
+        val view = FieldIconView(context)
+        view.apply {
+            setPadding(viewPadding)
+            setStrokeColor(strokeColor)
+            setFieldIcon(icon)
+        }
         addView(view)
         return view
     }
@@ -213,43 +218,38 @@ class SignFormViewGroup : ViewGroup {
         editText.onTextChange({ // first method scope
                     nextIconView.rotate(Constants.Degree.DEGREE_0,
                             Constants.Degree.DEGREE_30, Constants.DURATION_400, null)
-                    val fullText = it.replace(" ", "_")
-                    if(!fullText.isEmpty()) {
-                        val last = fullText.last().toString()
-                        onTextChange(fullText.trim(), last)
-                    } else {
-                        fieldTextWidth = 1
-                    }
-                }, { // second method scope
-                    nextIconView.rotate(Constants.Degree.DEGREE_30,
-                            Constants.Degree.DEGREE_0, Constants.DURATION_400, BounceInterpolator(AMPLITUDE, FREQUENCY))
-                }
-        )
+                    onTextChange()
+
+        })
+//        nextIconView.rotate(Constants.Degree.DEGREE_30,
+//                Constants.Degree.DEGREE_0, Constants.DURATION_400, BounceInterpolator(AMPLITUDE, FREQUENCY))
     }
 
-    private fun onTextChange(fullText: String, lastLetter: String) {
-        val fullTextSize = textPaint.textWidth(fullText)
-        if(fullTextSize > nameFieldHolder.viewHolder.textViewField.width) {
-            if(previousFullTextSize < fullTextSize) {
-                val different = fullText.length - previousFullTextLength
-                if(different == 1) {
-                    fieldTextWidth += textPaint.textWidth(lastLetter)
-                } else {
-                    fieldTextWidth += textPaint.textWidth(fullText.substring(fullText.length - different))
-                }
-            } else if(previousFullTextSize > fullTextSize){
-                if(fieldTextWidth > 0) {
-                    fieldTextWidth -= textPaint.textWidth(lastLetter)
-                }
-            }
+
+    private fun onTextChange() {
+        val viewWidth = obtainFieldWidth()
+        if(viewWidth > width * .3f) {
+            fieldTextWidth += viewWidth - previousFieldTextWidth
         }
-        previousFullTextLength = fullText.length
-        previousFullTextSize = fullTextSize
+        previousFieldTextWidth = viewWidth
+    }
+
+    private fun obtainFieldWidth(): Int {
+        val fieldHolder: FieldHolder
+        when(currentFieldType) {
+            FieldType.NONE -> return 0
+            FieldType.NAME_FIELD ->
+                fieldHolder = nameFieldHolder
+            FieldType.EMAIL_FIELD ->
+                fieldHolder = emailFieldHolder
+            FieldType.PASSWORD_FIELD ->
+                fieldHolder = passwordFieldHolder
+        }
+        return fieldHolder.viewHolder.editTextFiled.width
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val emptyOffset = resources.getDimensionPixelOffset(R.dimen.empty_offset)
-        val parentWidth = MeasureSpec.makeMeasureSpec(viewWidth + (fieldTextWidth + emptyOffset), MeasureSpec.EXACTLY)
+        val parentWidth = MeasureSpec.makeMeasureSpec(viewWidth + fieldTextWidth, MeasureSpec.EXACTLY)
         val parentHeight = MeasureSpec.makeMeasureSpec(viewHeight, MeasureSpec.EXACTLY)
         measureChild(mainTitleView, viewWidth, viewHeight)
         measureChild(finishTitleView, viewWidth, viewHeight)
@@ -262,7 +262,7 @@ class SignFormViewGroup : ViewGroup {
 
     private fun measureFieldViews() {
         fieldHolders.forEach {
-            it.fieldIcon.measure(height, height)
+            it.fieldFieldIcon.measure(height, height)
             measureChild(it.viewHolder.root, viewWidth, viewHeight)
         }
     }
@@ -298,7 +298,7 @@ class SignFormViewGroup : ViewGroup {
     private fun layoutFieldViews() {
         var offset = 0
         fieldHolders.forEach {
-            it.fieldIcon.layout(-height - offset, 0, -offset, height)
+            it.fieldFieldIcon.layout(-height - offset, 0, -offset, height)
             layoutRootView(it.viewHolder.root)
             offset += 5
         }
@@ -383,12 +383,12 @@ class SignFormViewGroup : ViewGroup {
         val nameValidator = nameFieldHolder.validator
         name = nameFieldHolder.viewHolder.editTextFiled.text.toString()
         if(nameValidator.validate(name)) {
-            nameFieldHolder.fieldIcon.translateX(width * 1.5f, Constants.DURATION_500, 0, AccelerateInterpolator())
+            nameFieldHolder.fieldFieldIcon.translateX(width * 1.5f, Constants.DURATION_500, 0, AccelerateInterpolator())
                     .onEnd {
-                        nameFieldHolder.fieldIcon.visibility = View.GONE
-                        nameFieldHolder.fieldIcon.setStrokeColor(R.color.icon1)
+                        nameFieldHolder.fieldFieldIcon.visibility = View.GONE
+                        nameFieldHolder.fieldFieldIcon.setStrokeColor(R.color.icon1)
                     }
-            nameFieldHolder.fieldIcon.rotate(Constants.Degree.DEGREE_0,
+            nameFieldHolder.fieldFieldIcon.rotate(Constants.Degree.DEGREE_0,
                     Constants.Degree.DEGREE_30, Constants.DURATION_500, DecelerateInterpolator())
             nameFieldHolder.viewHolder.root.visibility = View.GONE
             emailFieldHolder.viewHolder.root.visibility = View.VISIBLE
@@ -404,12 +404,12 @@ class SignFormViewGroup : ViewGroup {
         val emailValidator = emailFieldHolder.validator
         email = emailFieldHolder.viewHolder.editTextFiled.text.toString()
         if(emailValidator.validate(email)) {
-            emailFieldHolder.fieldIcon.translateX(width * 1.5f, Constants.DURATION_500, 0, AccelerateInterpolator())
+            emailFieldHolder.fieldFieldIcon.translateX(width * 1.5f, Constants.DURATION_500, 0, AccelerateInterpolator())
                     .onEnd {
-                        emailFieldHolder.fieldIcon.visibility = View.GONE
-                        emailFieldHolder.fieldIcon.setStrokeColor(R.color.icon2)
+                        emailFieldHolder.fieldFieldIcon.visibility = View.GONE
+                        emailFieldHolder.fieldFieldIcon.setStrokeColor(R.color.icon2)
                     }
-            emailFieldHolder.fieldIcon.rotate(Constants.Degree.DEGREE_0,
+            emailFieldHolder.fieldFieldIcon.rotate(Constants.Degree.DEGREE_0,
                     Constants.Degree.DEGREE_30, Constants.DURATION_500, DecelerateInterpolator())
             emailFieldHolder.viewHolder.root.visibility = View.GONE
             passwordFieldHolder.viewHolder.root.visibility = View.VISIBLE
@@ -425,14 +425,14 @@ class SignFormViewGroup : ViewGroup {
         val passwordValidator = passwordFieldHolder.validator
         password = passwordFieldHolder.viewHolder.editTextFiled.text.toString()
         if(passwordValidator.validate(password)) {
-            passwordFieldHolder.fieldIcon.translateX(width * 1.5f, Constants.DURATION_500, 0, AccelerateInterpolator())
+            passwordFieldHolder.fieldFieldIcon.translateX(width * 1.5f, Constants.DURATION_500, 0, AccelerateInterpolator())
                     .onEnd {
-                        passwordFieldHolder.fieldIcon.visibility = View.GONE
-                        passwordFieldHolder.fieldIcon.setStrokeColor(R.color.icon3)
+                        passwordFieldHolder.fieldFieldIcon.visibility = View.GONE
+                        passwordFieldHolder.fieldFieldIcon.setStrokeColor(R.color.icon3)
                         // sign logic finish
                         onSignFinish()
                     }
-            passwordFieldHolder.fieldIcon.rotate(Constants.Degree.DEGREE_0,
+            passwordFieldHolder.fieldFieldIcon.rotate(Constants.Degree.DEGREE_0,
                     Constants.Degree.DEGREE_30, Constants.DURATION_500, DecelerateInterpolator())
             passwordFieldHolder.viewHolder.root.visibility = View.GONE
             currentFieldType = FieldType.NONE
@@ -448,11 +448,11 @@ class SignFormViewGroup : ViewGroup {
 
     private fun allViewToDefaultState() {
         // translate to default
-        nameFieldHolder.fieldIcon.translateX(0f, 0, 0, DecelerateInterpolator())
+        nameFieldHolder.fieldFieldIcon.translateX(0f, 0, 0, DecelerateInterpolator())
         nameFieldHolder.viewHolder.editTextFiled.setText(Constants.EMPTY_STRING)
-        emailFieldHolder.fieldIcon.translateX(0f, 0, 0, DecelerateInterpolator())
+        emailFieldHolder.fieldFieldIcon.translateX(0f, 0, 0, DecelerateInterpolator())
         emailFieldHolder.viewHolder.editTextFiled.setText(Constants.EMPTY_STRING)
-        passwordFieldHolder.fieldIcon.translateX(0f, 0, 0, DecelerateInterpolator())
+        passwordFieldHolder.fieldFieldIcon.translateX(0f, 0, 0, DecelerateInterpolator())
         passwordFieldHolder.viewHolder.editTextFiled.setText(Constants.EMPTY_STRING)
         // set main title visible
         mainTitleView.visibility = View.VISIBLE
@@ -464,19 +464,19 @@ class SignFormViewGroup : ViewGroup {
     }
 
     private fun activateFieldIcon(fieldHolder: FieldHolder, nextFieldHolder: FieldHolder?) {
-        fieldHolder.fieldIcon.x = fieldHolder.fieldIcon.x - 5f
+        fieldHolder.fieldFieldIcon.x = fieldHolder.fieldFieldIcon.x - 5f
         if(nextFieldHolder != null) {
-            nextFieldHolder.fieldIcon.x = nextFieldHolder.fieldIcon.x - 5f
+            nextFieldHolder.fieldFieldIcon.x = nextFieldHolder.fieldFieldIcon.x - 5f
         }
-        fieldHolder.fieldIcon.setStrokeColor(android.R.color.white)
+        fieldHolder.fieldFieldIcon.setStrokeColor(android.R.color.white)
     }
 
     private fun translateFieldIcons() {
         var delay = 0L
         fieldHolders.forEach {
             val x = height.toFloat() + 10
-            it.fieldIcon.visibility = View.VISIBLE
-            it.fieldIcon.translateX(x, Constants.DURATION_500, delay, DecelerateInterpolator())
+            it.fieldFieldIcon.visibility = View.VISIBLE
+            it.fieldFieldIcon.translateX(x, Constants.DURATION_500, delay, DecelerateInterpolator())
             delay += 50
         }
     }
@@ -484,7 +484,7 @@ class SignFormViewGroup : ViewGroup {
     private fun rotateFieldIcons() {
         fieldHolders.forEach {
             // rotate current view
-            it.fieldIcon.rotate(Constants.Degree.DEGREE_0, Constants.Degree.DEGREE_30, Constants.DURATION_500, null)
+            it.fieldFieldIcon.rotate(Constants.Degree.DEGREE_0, Constants.Degree.DEGREE_30, Constants.DURATION_500, null)
                     // it return ObjectAnimator, so we can add some listeners
                     .onEnd {
                         rotateFieldIconsBack()
@@ -493,7 +493,7 @@ class SignFormViewGroup : ViewGroup {
     }
 
     private fun rotateFieldIconsBack() {
-        fieldHolders.forEach { it.fieldIcon.rotate(Constants.Degree.DEGREE_30,
+        fieldHolders.forEach { it.fieldFieldIcon.rotate(Constants.Degree.DEGREE_30,
                 Constants.Degree.DEGREE_0, Constants.DURATION_500, BounceInterpolator(AMPLITUDE, FREQUENCY)) }
     }
 
@@ -511,9 +511,9 @@ class SignFormViewGroup : ViewGroup {
     private fun drawBackground(canvas: Canvas?) {
         if(!isSignFinish) {
             val radius = height * .5f
-            val left = padding.toFloat()
-            val right = width.toFloat() - padding.toFloat()
-            val bottom = height.toFloat() - padding.toFloat()
+            val left = viewPadding .toFloat()
+            val right = width.toFloat() - viewPadding .toFloat()
+            val bottom = height.toFloat() - viewPadding .toFloat()
             canvas?.drawRoundRect(left, left, right, bottom, radius, radius, backgroundPaint)
         }
     }

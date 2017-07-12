@@ -2,6 +2,7 @@ package soulyaroslav.library.extension
 
 import android.animation.Animator
 import android.animation.ObjectAnimator
+import android.content.SharedPreferences
 import android.graphics.Rect
 import android.text.Editable
 import android.text.TextPaint
@@ -11,6 +12,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Interpolator
 import android.widget.EditText
+import kotlin.properties.ReadWriteProperty
+import kotlin.reflect.KProperty
 
 /**
  * Created by yaroslav on 7/4/17.
@@ -20,10 +23,9 @@ fun ViewGroup.inflate(layoutId: Int, attach: Boolean = false) : View {
     return LayoutInflater.from(context).inflate(layoutId, this, attach)
 }
 
-fun EditText.onTextChange(onTextChange: (String) -> Unit, afterTextChange: (String) -> Unit) {
+fun EditText.onTextChange(onTextChange: (String) -> Unit) {
     addTextChangedListener(object : TextWatcher {
         override fun afterTextChanged(p0: Editable?) {
-            afterTextChange.invoke(p0.toString())
         }
 
         override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
@@ -128,20 +130,20 @@ fun TextPaint.textWidth(text: String) : Int {
 //    // ...
 //}
 
-//private inline fun <T> SharedPreferences.delegate(defaultValue: T, key: String?,
-//                                                  crossinline getter: SharedPreferences.(String, T) -> T,
-//                                                  crossinline setter: SharedPreferences.Editor.(String, T) -> SharedPreferences.Editor): ReadWriteProperty<Any, T> {
-//    return object : ReadWriteProperty<Any, T> {
-//        override fun getValue(thisRef: Any, property: KProperty<*>) =
-//                getter(key ?: property.name, defaultValue)
-//
-//        override fun setValue(thisRef: Any, property: KProperty<*>, value: T) =
-//                edit().setter(key ?: property.name, value).apply()
-//    }
-//}
-//
-//fun SharedPreferences.int(def: Int = 0, key: String? = null) =
-//        delegate(def, key, SharedPreferences::getInt, SharedPreferences.Editor::putInt)
-//
-//fun SharedPreferences.string(def: String = "", key: String? = null) =
-//        delegate(def, key, SharedPreferences::getString, SharedPreferences.Editor::putString)
+private inline fun <T> SharedPreferences.delegate(defaultValue: T, key: String?,
+                                                  crossinline getter: SharedPreferences.(String, T) -> T,
+                                                  crossinline setter: SharedPreferences.Editor.(String, T) -> SharedPreferences.Editor): ReadWriteProperty<Any, T> {
+    return object : ReadWriteProperty<Any, T> {
+        override fun getValue(thisRef: Any, property: KProperty<*>) =
+                getter(key ?: property.name, defaultValue)
+
+        override fun setValue(thisRef: Any, property: KProperty<*>, value: T) =
+                edit().setter(key ?: property.name, value).apply()
+    }
+}
+
+fun SharedPreferences.int(def: Int = 0, key: String? = null) =
+        delegate(def, key, SharedPreferences::getInt, SharedPreferences.Editor::putInt)
+
+fun SharedPreferences.string(def: String = "", key: String? = null) =
+        delegate(def, key, SharedPreferences::getString, SharedPreferences.Editor::putString)

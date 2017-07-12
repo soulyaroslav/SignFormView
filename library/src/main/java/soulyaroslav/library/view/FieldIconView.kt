@@ -13,11 +13,11 @@ import soulyaroslav.library.R
 /**
  * Created by yaroslav on 7/4/17.
  */
-class IconView : View {
+class FieldIconView : View {
 
     private lateinit var backgroundPaint: Paint
     private lateinit var backgroundStrokePaint: Paint
-    private var bitmap: Bitmap
+    private var bitmap: Bitmap? = null
     private var padding = 0
     private var strokeColor = 0
 
@@ -28,8 +28,6 @@ class IconView : View {
     init {
         initBackgroundPaint()
         initStrokeBackgroundPaint()
-
-        bitmap = BitmapFactory.decodeResource(resources, R.drawable.person)
     }
 
     private fun initBackgroundPaint() {
@@ -71,7 +69,9 @@ class IconView : View {
     private fun drawIcon(canvas: Canvas?) {
         val centerX = width * .5f
         val centerY = height * .5f
-        canvas?.drawBitmap(bitmap, centerX - bitmap.width / 2, centerY - bitmap.height / 2, null)
+        bitmap?.let {
+            canvas?.drawBitmap(bitmap, centerX - bitmap!!.width / 2, centerY - bitmap!!.height / 2, null)
+        }
     }
 
     private fun reconcileSize(contentSize: Int, measureSpec: Int): Int {
@@ -101,5 +101,9 @@ class IconView : View {
         this.strokeColor = strokeColor
         backgroundStrokePaint.color = ContextCompat.getColor(context, strokeColor)
         invalidate()
+    }
+
+    fun setFieldIcon(iconId: Int) {
+        bitmap = BitmapFactory.decodeResource(resources, iconId)
     }
 }
